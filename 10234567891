@@ -1,0 +1,45 @@
+-- FORSAKEN HITBOX EXPANDER (SIMPLE)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+
+-- CONFIG
+local ENABLED = false
+local HITBOX_SIZE = Vector3.new(4, 4, 4) -- recomendado: 3 a 5
+local TRANSPARENCY = 1
+
+-- ===== TOGGLE (tecla L) =====
+game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.L then
+        ENABLED = not ENABLED
+        warn("Hitbox:", ENABLED and "ON" or "OFF")
+    end
+end)
+
+-- ===== EXPAND FUNCTION =====
+local function expand(character)
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    hrp.Size = HITBOX_SIZE
+    hrp.Transparency = TRANSPARENCY
+    hrp.CanCollide = false
+    hrp.Massless = true
+end
+
+-- ===== MAIN LOOP =====
+RunService.RenderStepped:Connect(function()
+    if not ENABLED then return end
+
+    local killersFolder = workspace:FindFirstChild("Players")
+        and workspace.Players:FindFirstChild("Killers")
+
+    if not killersFolder then return end
+
+    for _, killer in ipairs(killersFolder:GetChildren()) do
+        expand(killer)
+    end
+end)
