@@ -1,45 +1,86 @@
--- FORSAKEN HITBOX EXPANDER (SIMPLE)
+-- FORSAKEN BODY AIM (AUTO DISABLE SHIFT LOCK)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
 
-local localPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
+local char, hrp, humanoid
 
--- CONFIG
-local ENABLED = false
-local HITBOX_SIZE = Vector3.new(4, 4, 4) -- recomendado: 3 a 5
-local TRANSPARENCY = 1
+-- ===== UI =====
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.ResetOnSpawn = false
 
--- ===== TOGGLE (tecla L) =====
-game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.L then
-        ENABLED = not ENABLED
-        warn("Hitbox:", ENABLED and "ON" or "OFF")
-    end
+local btn = Instance.new("TextButton", gui)
+btn.Size = UDim2.new(0,160,0,40)
+btn.Position = UDim2.new(0,20,0,260)
+btn.Text = "Body Aim: OFF"
+btn.TextScaled = true
+btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+btn.TextColor3 = Color3.new(1,1,1)
+
+-- ===== STATE =====
+local active = false
+local spamTimer = 0
+
+btn.MouseButton1Click:Connect(function()
+	active = not active
+	btn.Text = active and "Body Aim: ON" or "Body Aim: OFF"
 end)
 
--- ===== EXPAND FUNCTION =====
-local function expand(character)
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+-- ===== CHARACTER =====
+local function setup(c)
+	char = c
+	humanoid = c:WaitForChild("Humanoid")
+	hrp = c:WaitForChild("HumanoidRootPart")
+end
+if player.Character then setup(player.Character) end
+player.CharacterAdded:Connect(setup)
 
-    hrp.Size = HITBOX_SIZE
-    hrp.Transparency = TRANSPARENCY
-    hrp.CanCollide = false
-    hrp.Massless = true
+-- ===== GET ASSASSIN =====
+local function getAssassinHRP()
+	local killers = workspace:FindFirstChild("Players")
+		and workspace.Players:FindFirstChild("Killers")
+
+	if not killers then return nil end
+
+	for _, k in pairs(killers:GetChildren()) do
+		if k:FindFirstChild("HumanoidRootPart") then
+			return k.HumanoidRootPart
+		end
+	end
 end
 
 -- ===== MAIN LOOP =====
 RunService.RenderStepped:Connect(function()
-    if not ENABLED then return end
+	if not active or not hrp or not humanoid then return end
 
-    local killersFolder = workspace:FindFirstChild("Players")
-        and workspace.Players:FindFirstChild("Killers")
+	-- AUTO DISABLE WHEN SHIFT LOCK
+	if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter then
+		humanoid.AutoRotate = true
+		return
+	end
 
-    if not killersFolder then return end
+	humanoid.AutoRotate = false
 
-    for _, killer in ipairs(killersFolder:GetChildren()) do
-        expand(killer)
-    end
+	local targetHRP = getAssassinHRP()
+	if not targetHRP then return end
+
+	-- ROTATE BODY (Y axis only)
+	local dir = (targetHRP.Position - hrp.Position)
+	local yaw = math.atan2(-dir.X, -dir.Z)
+
+	hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, yaw, 0)
+
+	-- spam message to confirm
+	if tick() - spamTimer > 1 then
+		spamTimer = tick()
+		pcall(function()
+			StarterGui:SetCore("ChatMakeSystemMessage", {
+				Text = "[BODY AIM ATIVO]";
+				Color = Color3.fromRGB(255,120,120);
+			})
+		end)
+	end
 end)
